@@ -1,0 +1,64 @@
+@startuml
+title JCB Render Command Flow (jcb render temp.yaml dest.yaml)
+
+
+participant "jcb (CLI)" as CLI
+participant "driver.py" as Driver
+participant "renderer.py" as Renderer
+participant "Jinja2 Engine" as Jinja2
+database "temp.yaml" as InputYAML
+database "dest.yaml" as OutputYAML
+collections "Templates (.j2)" as Templates
+
+skinparam handwritten true
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 20
+skinparam maxmessagesize 120
+skinparam sequenceParticipant bordercolor DarkSlateGray
+skinparam sequenceActor bordercolor DarkSlateGray
+
+
+
+CLI -> Driver: main()
+activate Driver
+
+Driver -> InputYAML: Reads `temp.yaml`
+activate InputYAML
+InputYAML --> Driver: Returns template dictionary
+deactivate InputYAML
+
+Driver -> Renderer: Calls [render(template_dict)]\n (src/jcb/renderer.py\n:174:4-240:24)
+activate Renderer
+
+Renderer -> Renderer: new Renderer(template_dict)
+note right: Initializes Jinja2 search paths\nbased on the input dictionary.
+
+Renderer -> Renderer: Calls internal [render(algorithm)]\n(src/jcb/renderer.py\n:174:4-240:24)
+Renderer -> Jinja2: env.get_template\n(algorithm + '.yaml.j2')
+activate Jinja2
+
+Jinja2 -> Templates: Loads main template and any includes
+activate Templates
+Templates --> Jinja2: Returns template contents
+deactivate Templates
+
+Jinja2 -> Jinja2: Renders templates using variables\nfrom `template_dict`
+Jinja2 --> Renderer: Returns final YAML as a string
+deactivate Jinja2
+
+Renderer -> Renderer: Loads YAML string into a dictionary
+Renderer --> Driver: Returns final dictionary
+deactivate Renderer
+
+Driver -> OutputYAML: Writes dictionary to `dest.yaml`
+activate OutputYAML
+OutputYAML --> Driver: Success
+deactivate OutputYAML
+
+Driver --> CLI: Returns
+deactivate Driver
+
+
+
+@enduml
+
